@@ -7,7 +7,11 @@ authors = [
     { name = "Calvin Vu", email = "vucalvin95@gmail.com" }
 ]
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "httpx>=0.28.1",
+    "pydantic>=2.14.1",
+    "python-dotenv>=1.2.4",
+]
 
 [project.scripts]
 reels-ripper-agent = "reels_ripper_agent:main"
