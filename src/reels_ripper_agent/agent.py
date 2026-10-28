@@ -11,8 +11,7 @@ class Agent:
         self,
         llm: LLM,
         tools: list[Tool],
-        system_prompt: str =
-        """
+        system_prompt: str = """
         You are a helpful assistant with access to tools.
         Use tools whenever they help you accomplish your tasks or give more accurate answers.
         When you have enough information, respond directly and concisely.

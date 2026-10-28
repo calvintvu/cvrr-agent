@@ -4,12 +4,12 @@ from typing import Any
 import httpx
 from beartype import beartype
 
-from reels_ripper_agent.llm.base import Message
+from reels_ripper_agent.llm.base import LLM, Message
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 
-class OpenRouterLLM:
+class OpenRouterLLM(LLM):
     @beartype
     def __init__(
         self,

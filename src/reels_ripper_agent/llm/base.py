@@ -1,4 +1,4 @@
-from typing import Any, Literal, Protocol, runtime_checkable
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -21,8 +21,8 @@ class Message(BaseModel):
     tool_call_id: str | None = None
 
 
-@runtime_checkable
-class LLM(Protocol):
+class LLM:
     async def complete(
         self, messages: list[Message], tools: list[dict[str, Any]] | None = None
-    ) -> Message: ...
+    ) -> Message:
+        raise NotImplementedError
