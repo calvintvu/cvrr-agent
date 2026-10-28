@@ -1,7 +1,7 @@
 from beartype import beartype
 from pydantic import ValidationError
 
-from reels_ripper_agent.llm import LLM, Message, ToolCall
+from reels_ripper_agent.llm.base import LLM, Message, ToolCall
 from reels_ripper_agent.tools import Tool
 
 

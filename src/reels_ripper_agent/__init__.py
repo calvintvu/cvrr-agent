@@ -6,7 +6,7 @@ from beartype import beartype
 from dotenv import load_dotenv
 
 from reels_ripper_agent.agent import Agent
-from reels_ripper_agent.llm import OpenRouterLLM
+from reels_ripper_agent.llm.openrouter import OpenRouterLLM
 from reels_ripper_agent.tools import GetWeather
 
 
