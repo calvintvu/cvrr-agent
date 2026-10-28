@@ -23,6 +23,9 @@ class Message(BaseModel):
 
 class LLM:
     async def complete(
-        self, messages: list[Message], tools: list[dict[str, Any]] | None = None
+        self,
+        messages: list[Message],
+        tools: list[dict[str, Any]] | None = None,
+        response_model: type[BaseModel] | None = None,
     ) -> Message:
         raise NotImplementedError
