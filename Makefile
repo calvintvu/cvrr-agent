@@ -9,3 +9,9 @@ endif
 
 run:
 	uv run reels-ripper-agent $${RUN_PROMPT:+"$$RUN_PROMPT"}
+
+format:
+	uv run ruff format .
+
+check:
+	uv run ruff check .
