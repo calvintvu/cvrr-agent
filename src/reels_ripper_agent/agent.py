@@ -65,7 +65,7 @@ class Agent:
             if not reply.tool_calls:
                 consecutive_tool_responses = 0
                 if response.decision == "STOP":
-                    return "done!"
+                    return response.content
                 consecutive_text_responses += 1
                 if consecutive_text_responses >= self.max_consecutive_text_responses:
                     raise RuntimeError(
