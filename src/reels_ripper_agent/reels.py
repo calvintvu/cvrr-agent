@@ -15,6 +15,7 @@ class Reel(BaseModel):
 
 _REEL_LIST = TypeAdapter(list[Reel])
 
+
 @beartype
 def check_output(raw: object) -> list[Reel]:
     """Validate parser output and return unique reels with canonical URLs."""

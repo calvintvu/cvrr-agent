@@ -30,9 +30,11 @@ async def run_parser(code: str, data: object) -> object:
 
     return await asyncio.wait_for(execute(), timeout=5)
 
+
 @beartype
 def read_parser(parser_dir: Path) -> str:
     return (parser_dir / "latest.py").read_text(encoding="utf-8")
+
 
 @beartype
 def _atomic_write(path: Path, code: str) -> None:
@@ -43,6 +45,7 @@ def _atomic_write(path: Path, code: str) -> None:
         os.replace(temporary, path)
     finally:
         Path(temporary).unlink(missing_ok=True)
+
 
 @beartype
 def save_parser(parser_dir: Path, code: str) -> None:

@@ -4,7 +4,7 @@ from beartype import beartype
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from reels_ripper_agent.llm.base import LLM, Message, ToolCall
-from reels_ripper_agent.tools import Tool
+from reels_ripper_agent.tools.base import Tool
 
 
 class AgentResponse(BaseModel):
@@ -25,7 +25,7 @@ class Agent:
         When the task is complete, respond with decision STOP and your final answer in content.
         Otherwise, use tools or respond with decision CONTINUE and a brief progress update in content.
         """,
-        max_consecutive_text_responses: int = 5,
+        max_consecutive_text_responses: int = 10,
         max_consecutive_tool_responses: int = 100,
     ) -> None:
         if max_consecutive_text_responses < 1 or max_consecutive_tool_responses < 1:

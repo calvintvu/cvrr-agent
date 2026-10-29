@@ -10,9 +10,7 @@ from reels_ripper_agent.agent import Agent
 from reels_ripper_agent.llm.base import LLM
 from reels_ripper_agent.parser import read_parser, run_parser, save_parser
 from reels_ripper_agent.reels import Reel, check_output
-from reels_ripper_agent.tools import Tool
-
-_MAX_TOOL_CALLS = 12
+from reels_ripper_agent.tools.base import Tool
 
 
 class InspectReelsJsonArgs(BaseModel):
@@ -141,7 +139,9 @@ An empty list is valid for a recognized input containing no reels.
 The source runs in Monty with 2 seconds of execution time and 32 MiB of memory.
 Use plain Python data operations. Files, environment variables, network, and third-party packages are unavailable.
 You have three candidate attempts. Use the returned errors to repair the source.
-The host ends the run when a candidate is accepted. Do not claim success without an accepted candidate.
+After a candidate is accepted, respond with decision STOP and a brief completion message in content.
+When no candidate attempts remain, respond with decision STOP and explain the failure in content.
+Otherwise, use tools or respond with decision CONTINUE. Do not claim success without an accepted candidate.
 """
 
 
@@ -165,31 +165,16 @@ async def repair_parser(
         llm,
         tools=[inspector, candidate],
         system_prompt=_REPAIR_PROMPT,
-        max_consecutive_tool_responses=_MAX_TOOL_CALLS,
+        max_consecutive_tool_responses=12,
     )
-
-    @beartype
-    def should_stop() -> bool:
-        return (
-            candidate.result is not None
-            or candidate.attempts >= candidate.max_attempts
-            or sum(message.role == "tool" for message in agent.messages)
-            >= _MAX_TOOL_CALLS
-        )
-
     await agent.run(
         f"Previous error: {previous_error}\n\nExisting parser:\n{previous_code}\n\nJSON preview:\n{preview}",
-        stop_after_tool=should_stop,
     )
     if candidate.result is not None:
         return candidate.result
     if candidate.attempts >= candidate.max_attempts:
         raise RuntimeError(
             f"Parser repair failed after {candidate.attempts} attempts: {candidate.last_error}"
-        )
-    if sum(message.role == "tool" for message in agent.messages) >= _MAX_TOOL_CALLS:
-        raise RuntimeError(
-            "Parser repair reached the tool-call limit without a valid parser"
         )
     raise RuntimeError(
         f"Agent stopped without a valid parser. {candidate.last_error}".rstrip()
