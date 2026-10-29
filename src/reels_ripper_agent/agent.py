@@ -44,6 +44,7 @@ class Agent:
         consecutive_tool_responses = 0
 
         while True:
+            print('working...')
             reply = await self.llm.complete(
                 self.messages, schemas, response_model=AgentResponse
             )
