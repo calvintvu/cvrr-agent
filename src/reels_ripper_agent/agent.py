@@ -44,11 +44,16 @@ class Agent:
         consecutive_tool_responses = 0
 
         while True:
-            print('working...')
+            print("working...")
             reply = await self.llm.complete(
                 self.messages, schemas, response_model=AgentResponse
             )
-            print(reply.content or '')
+            response = (
+                AgentResponse(decision="CONTINUE", content=reply.content or "")
+                if reply.tool_calls
+                else AgentResponse.model_validate_json(reply.content)
+            )
+            print(response.content)
             if reply.tool_calls:
                 if consecutive_tool_responses >= self.max_consecutive_tool_responses:
                     raise RuntimeError(
@@ -59,9 +64,8 @@ class Agent:
             self.messages.append(reply)
             if not reply.tool_calls:
                 consecutive_tool_responses = 0
-                response = AgentResponse.model_validate_json(reply.content)
                 if response.decision == "STOP":
-                    return response.content
+                    return "done!"
                 consecutive_text_responses += 1
                 if consecutive_text_responses >= self.max_consecutive_text_responses:
                     raise RuntimeError(
