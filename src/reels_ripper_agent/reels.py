@@ -2,6 +2,7 @@ import re
 from typing import Annotated
 from urllib.parse import urlsplit
 
+from beartype import beartype
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 
@@ -14,7 +15,7 @@ class Reel(BaseModel):
 
 _REEL_LIST = TypeAdapter(list[Reel])
 
-
+@beartype
 def check_output(raw: object) -> list[Reel]:
     """Validate parser output and return unique reels with canonical URLs."""
     authors_by_url: dict[str, set[str]] = {}
