@@ -1,8 +1,10 @@
+import json
 import os
 from typing import Any
 
 import httpx
 from beartype import beartype
+from pydantic import BaseModel
 
 from reels_ripper_agent.llm.base import LLM, Message
 
@@ -25,7 +27,10 @@ class OpenRouterLLM(LLM):
 
     @beartype
     async def complete(
-        self, messages: list[Message], tools: list[dict[str, Any]] | None = None
+        self,
+        messages: list[Message],
+        tools: list[dict[str, Any]] | None = None,
+        response_model: type[BaseModel] | None = None,
     ) -> Message:
         payload: dict[str, Any] = {
             "model": self.model,
@@ -33,6 +38,17 @@ class OpenRouterLLM(LLM):
         }
         if tools:
             payload["tools"] = tools
+        if response_model is not None:
+            schema = json.dumps(response_model.model_json_schema())
+            payload["messages"].insert(
+                0,
+                {
+                    "role": "system",
+                    "content": f"Return text responses as JSON matching this schema:\n{schema}",
+                },
+            )
+            payload["response_format"] = {"type": "json_object"}
+            payload["provider"] = {"require_parameters": True}
 
         resp = await self._client.post(OPENROUTER_URL, json=payload)
         if resp.is_error:
