@@ -25,34 +25,51 @@ class Agent:
         When the task is complete, respond with decision STOP and your final answer in content.
         Otherwise, use tools or respond with decision CONTINUE and a brief progress update in content.
         """,
-        max_steps: int = 10,
+        max_consecutive_text_responses: int = 5,
+        max_consecutive_tool_responses: int = 100,
     ) -> None:
+        if max_consecutive_text_responses < 1 or max_consecutive_tool_responses < 1:
+            raise ValueError("Response limits must be positive")
         self.llm = llm
         self.tools = {t.name: t for t in tools}
-        self.max_steps = max_steps
+        self.max_consecutive_text_responses = max_consecutive_text_responses
+        self.max_consecutive_tool_responses = max_consecutive_tool_responses
         self.messages: list[Message] = [Message(role="system", content=system_prompt)]
 
     @beartype
     async def run(self, prompt: str) -> str:
         self.messages.append(Message(role="user", content=prompt))
         schemas = [t.schema() for t in self.tools.values()]
+        consecutive_text_responses = 0
+        consecutive_tool_responses = 0
 
-        for _ in range(self.max_steps):
+        while True:
             reply = await self.llm.complete(
                 self.messages, schemas, response_model=AgentResponse
             )
+            if reply.tool_calls:
+                if consecutive_tool_responses >= self.max_consecutive_tool_responses:
+                    raise RuntimeError(
+                        f"Agent reached the limit of {self.max_consecutive_tool_responses} consecutive tool-call responses"
+                    )
+                consecutive_tool_responses += 1
+                consecutive_text_responses = 0
             self.messages.append(reply)
             if not reply.tool_calls:
+                consecutive_tool_responses = 0
                 response = AgentResponse.model_validate_json(reply.content)
                 if response.decision == "STOP":
                     return response.content
+                consecutive_text_responses += 1
+                if consecutive_text_responses >= self.max_consecutive_text_responses:
+                    raise RuntimeError(
+                        f"Agent reached the limit of {self.max_consecutive_text_responses} consecutive text responses"
+                    )
             for call in reply.tool_calls or []:
                 result = await self._execute(call)
                 self.messages.append(
                     Message(role="tool", tool_call_id=call.id, content=result)
                 )
-
-        raise RuntimeError(f"Agent did not finish within {self.max_steps} steps")
 
     @beartype
     async def _execute(self, call: ToolCall) -> str:
