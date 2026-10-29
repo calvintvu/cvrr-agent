@@ -48,6 +48,7 @@ class Agent:
             reply = await self.llm.complete(
                 self.messages, schemas, response_model=AgentResponse
             )
+            print(reply.content or '')
             if reply.tool_calls:
                 if consecutive_tool_responses >= self.max_consecutive_tool_responses:
                     raise RuntimeError(
@@ -68,6 +69,7 @@ class Agent:
                     )
             for call in reply.tool_calls or []:
                 result = await self._execute(call)
+                print(f"calling tool: {call.function.name}")
                 self.messages.append(
                     Message(role="tool", tool_call_id=call.id, content=result)
                 )
