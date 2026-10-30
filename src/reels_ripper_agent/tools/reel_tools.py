@@ -91,8 +91,6 @@ class TryReelsParser(Tool):
 
     @beartype
     async def execute(self, args: TryReelsParserArgs) -> str:
-        if self.result is not None:
-            return json.dumps({"status": "accepted", "count": len(self.result)})
         if self.attempts >= self.max_attempts:
             return json.dumps(
                 {
@@ -133,13 +131,20 @@ Match labeled entries by label or title, rather than assuming fixed array positi
 Submit Python source defining parse(data) through try_reels_parser.
 The function must return a list of objects with exactly url and author_username.
 Return actual string values, not source paths. Use None for an unknown or ambiguous author.
-Extract saved reel URLs, avoiding unrelated links in captions or owner profiles.
+Extract saved-post permalinks, avoiding unrelated links in captions or owner profiles.
+The host validates URLs, keeps only reels, normalizes URLs, and deduplicates records.
+Focus on extracting the correct values; do not duplicate those host rules.
+Require the fields that locate each saved-post permalink. Missing required fields must raise an error,
+rather than silently skipping records. Only optional author fields may default to None.
 Raise ValueError when the input structure is unsupported. Do not hide errors with an empty list.
 An empty list is valid for a recognized input containing no reels.
 The source runs in Monty with 2 seconds of execution time and 32 MiB of memory.
 Use plain Python data operations. Files, environment variables, network, and third-party packages are unavailable.
 You have three candidate attempts. Use the returned errors to repair the source.
-After a candidate is accepted, respond with decision STOP and a brief completion message in content.
+Acceptance confirms execution and output types, not extraction completeness.
+Review the returned count against the inspected input. If the count is zero, verify that the input
+contains no saved reels before finishing. Inspect more fields or submit a corrected parser if needed.
+Once satisfied with an accepted candidate, respond with decision STOP and a brief completion message in content.
 When no candidate attempts remain, respond with decision STOP and explain the failure in content.
 Otherwise, use tools or respond with decision CONTINUE. Do not claim success without an accepted candidate.
 """

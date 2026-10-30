@@ -1,4 +1,3 @@
-import json
 import os
 from typing import Any
 
@@ -39,17 +38,14 @@ class OpenRouterLLM(LLM):
         if tools:
             payload["tools"] = tools
         if response_model is not None:
-            schema = json.dumps(response_model.model_json_schema())
-            payload["messages"].insert(
-                0,
-                {
-                    "role": "system",
-                    "content": f"Return text responses as JSON matching this schema:\n{schema}",
+            payload["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": response_model.__name__,
+                    "strict": True,
+                    "schema": response_model.model_json_schema(),
                 },
-            )
-            # some providers suppress native tool calls in JSON-only mode
-            if not tools:
-                payload["response_format"] = {"type": "json_object"}
+            }
             payload["provider"] = {"require_parameters": True}
 
         resp = await self._client.post(OPENROUTER_URL, json=payload)
