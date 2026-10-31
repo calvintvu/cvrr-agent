@@ -1,8 +1,14 @@
+import sys
+
 from beartype import beartype
 from pydantic import ValidationError
 
 from reels_ripper_agent.llm.base import LLM, Message, ToolCall
 from reels_ripper_agent.tools import Tool
+
+
+def _show_commentary(text: str) -> None:
+    print(f"\033[2m{text}\033[0m" if sys.stdout.isatty() else text)
 
 
 class Agent:
@@ -34,8 +40,13 @@ class Agent:
             print("working...")
             reply = await self.llm.complete(messages=self.messages, tools=tools)
             self.messages.append(reply)
+            if reply.reasoning:
+                _show_commentary(reply.reasoning)
             if not reply.tool_calls:
+                print("\n")
                 return reply.content or ""
+            if reply.content:
+                _show_commentary(reply.content)
 
             for call in reply.tool_calls:
                 result = await self._execute(call)
