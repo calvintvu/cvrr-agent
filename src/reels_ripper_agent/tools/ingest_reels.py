@@ -7,6 +7,7 @@ from beartype import beartype
 from pydantic import BaseModel, Field, StringConstraints, TypeAdapter, ValidationError
 from pydantic_monty import Monty, MontyError, ResourceLimits
 
+from reels_ripper_agent.db import save_reels
 from reels_ripper_agent.llm.base import LLM, Message
 from reels_ripper_agent.tools.base import Tool
 
@@ -130,7 +131,8 @@ class IngestReels(Tool):
     name = "ingest_reels"
     description = (
         "Extract (reel_url, author_username) pairs from an Instagram saved-posts "
-        "JSON file. Returns the number of reels extracted."
+        "JSON file and save new ones to the database. Returns the number of reels "
+        "extracted and the number of new reels saved."
     )
     args_model = IngestReelsArgs
 
@@ -141,4 +143,5 @@ class IngestReels(Tool):
     @beartype
     async def execute(self, args: IngestReelsArgs) -> str:
         reels = await extract_reels(self.llm, Path(args.path))
-        return f"Extracted {len(reels)} reels."
+        inserted = save_reels(reels)
+        return f"Extracted {len(reels)} reels, saved {inserted} new."
