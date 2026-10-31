@@ -26,6 +26,5 @@ class LLM:
         self,
         messages: list[Message],
         tools: list[dict[str, Any]] | None = None,
-        response_model: type[BaseModel] | None = None,
     ) -> Message:
         raise NotImplementedError
