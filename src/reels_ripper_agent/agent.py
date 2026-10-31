@@ -4,7 +4,7 @@ from beartype import beartype
 from pydantic import ValidationError
 
 from reels_ripper_agent.llm.base import LLM, Message, ToolCall
-from reels_ripper_agent.tools import Tool
+from reels_ripper_agent.tools.base import Tool
 
 
 def _show_commentary(text: str) -> None:
@@ -43,7 +43,6 @@ class Agent:
             if reply.reasoning:
                 _show_commentary(reply.reasoning)
             if not reply.tool_calls:
-                print("\n")
                 return reply.content or ""
             if reply.content:
                 _show_commentary(reply.content)
