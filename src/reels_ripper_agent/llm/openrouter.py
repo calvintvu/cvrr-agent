@@ -1,3 +1,4 @@
+import asyncio
 import os
 from typing import Any
 
@@ -15,9 +16,10 @@ class OpenRouterLLM(LLM):
         self,
         model: str = "openrouter/free",
         api_key: str | None = None,
-        timeout: float = 60.0,
+        timeout: float = 120.0,
     ) -> None:
         self.model = model
+        self.timeout = timeout
         api_key = api_key or os.environ["OPENROUTER_API_KEY"]
         self._client = httpx.AsyncClient(
             headers={"Authorization": f"Bearer {api_key}"}, timeout=timeout
@@ -36,7 +38,14 @@ class OpenRouterLLM(LLM):
         if tools:
             payload["tools"] = tools
 
-        resp = await self._client.post(OPENROUTER_URL, json=payload)
+        # httpx timeouts apply per read, and OpenRouter sends keepalive bytes while
+        # the model works, so only a deadline on the whole request stops a hang.
+        try:
+            resp = await asyncio.wait_for(
+                self._client.post(OPENROUTER_URL, json=payload), self.timeout
+            )
+        except asyncio.TimeoutError as e:
+            raise RuntimeError(f"OpenRouter: no reply after {self.timeout}s") from e
         if resp.is_error:
             raise RuntimeError(f"OpenRouter {resp.status_code}: {resp.text}")
         return Message.model_validate(resp.json()["choices"][0]["message"])
