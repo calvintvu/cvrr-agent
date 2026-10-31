@@ -1,0 +1,10 @@
+[
+  {
+    "label": "Debug agent",
+    "adapter": "Debugpy",
+    "request": "launch",
+    "python": "$ZED_WORKTREE_ROOT/.venv/bin/python",
+    "program": "$ZED_WORKTREE_ROOT/.venv/bin/reels-ripper-agent",
+    "cwd": "$ZED_WORKTREE_ROOT",
+  },
+]
