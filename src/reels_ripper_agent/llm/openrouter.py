@@ -44,7 +44,7 @@ class OpenRouterLLM(LLM):
             resp = await asyncio.wait_for(
                 self._client.post(OPENROUTER_URL, json=payload), self.timeout
             )
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             raise RuntimeError(f"OpenRouter: no reply after {self.timeout}s") from e
         if resp.is_error:
             raise RuntimeError(f"OpenRouter {resp.status_code}: {resp.text}")
