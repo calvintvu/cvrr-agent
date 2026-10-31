@@ -142,6 +142,10 @@ class IngestReels(Tool):
 
     @beartype
     async def execute(self, args: IngestReelsArgs) -> str:
-        reels = await extract_reels(self.llm, Path(args.path))
+        posts = await extract_reels(self.llm, Path(args.path))
+        reels = [(url, author) for url, author in posts if "/reel/" in url]
         inserted = save_reels(reels)
-        return f"Extracted {len(reels)} reels, saved {inserted} new."
+        return (
+            f"Extracted {len(posts)} posts, skipped {len(posts) - len(reels)} "
+            f"non-reel posts, saved {inserted} new reels."
+        )
