@@ -64,6 +64,7 @@ class Agent:
             args = tool.args_model.model_validate_json(call.function.arguments or "{}")
         except ValidationError as e:
             return f"Error: invalid arguments: {e}"
+        print(f"→ {call.function.name}({call.function.arguments or '{}'})")
         try:
             return await tool.execute(args)
         except Exception as e:  # noqa: BLE001 - report tool failures to the model

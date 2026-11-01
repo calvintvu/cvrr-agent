@@ -19,15 +19,17 @@ Reels = TypeAdapter(list[tuple[ReelUrl, Handle]])
 PARSERS_DIR = Path(".parsers")
 MAX_ATTEMPTS = 3
 
-PROMPT = """Write a Python snippet that extracts Instagram reels from JSON data.
+PROMPT = """Write a Python snippet that extracts Instagram posts from JSON data.
 
 Rules:
 - The parsed JSON is already in a variable named `data`.
 - The last line must be an expression that evaluates to a list of (url, author) tuples.
-- url: the reel link, for example "https://www.instagram.com/reel/<reel_id>/".
-- author: the Instagram username (handle) of the reel owner, for example "<username>".
+- url: the post link, for example "https://www.instagram.com/reel/<reel_id>/"
+  or "https://www.instagram.com/p/<post_id>/".
+- author: the Instagram username (handle) of the post owner, for example "<username>".
   Never use the display name, for example "<display_name>".
-- Return one tuple for every reel in `data`.
+- Return one tuple for every post in `data`, both /reel/ and /p/ links.
+  Do not filter the posts.
 - The code runs in a restricted interpreter: no imports, no file or network access.
 - Reply with only the code in one ```python block.
 
@@ -40,7 +42,9 @@ class IngestReelsArgs(BaseModel):
     path: str = Field(description="Path to an Instagram saved-posts JSON export")
 
 
-def _run_parser(code: str, data: object, expected_urls: int) -> list[tuple[str, str]]:
+def _run_parser(
+    code: str, data: object, expected_urls: set[str]
+) -> list[tuple[str, str]]:
     """Run code in Monty with `data` as input and validate the result.
 
     Raises ValueError with a message the LLM can act on.
@@ -57,9 +61,13 @@ def _run_parser(code: str, data: object, expected_urls: int) -> list[tuple[str, 
         reels = Reels.validate_python(result)
     except ValidationError as e:
         raise ValueError(f"invalid output: {str(e)[:1500]}") from e
-    found = len({url for url, _ in reels})
+    found = {url for url, _ in reels}
     if found != expected_urls:
-        raise ValueError(f"expected {expected_urls} unique urls, got {found}")
+        missing = sorted(expected_urls - found)[:5]
+        raise ValueError(
+            f"expected {len(expected_urls)} unique urls, got {len(found)}. "
+            f"Missing, for example: {missing}"
+        )
     return reels
 
 
@@ -97,31 +105,38 @@ async def _generate_parser(llm: LLM, sample: str, error: str | None) -> str:
 async def extract_reels(llm: LLM, path: Path) -> list[tuple[str, str]]:
     raw_text = path.read_text()
     data = json.loads(raw_text)
-    expected_urls = len(set(re.findall(REEL_URL_RE, raw_text)))
+    expected_urls = set(re.findall(REEL_URL_RE, raw_text))
 
     saved = sorted(PARSERS_DIR.glob("*.py"))
     for parser in saved:
         try:
-            return _run_parser(parser.read_text(), data, expected_urls)
+            reels = _run_parser(parser.read_text(), data, expected_urls)
         except ValueError:
             continue
+        print(f"  using saved parser {parser.name}")
+        return reels
 
     error = None  # feedback on the last bad code, for the LLM
     failure = None  # reason of the last failed attempt, for the final error
-    for _ in range(MAX_ATTEMPTS):
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        print(f"  asking LLM for a parser (attempt {attempt}/{MAX_ATTEMPTS})...")
         try:
             code = await _generate_parser(llm, _sample(data), error)
         except RuntimeError as e:  # LLM timeout or HTTP error: try a new request
             failure = str(e)
+            print(f"  attempt {attempt} failed: {failure}")
             continue
         try:
             reels = _run_parser(code, data, expected_urls)
         except ValueError as e:
             failure = str(e)
             error = f"Your previous code:\n```python\n{code}```\nfailed: {e}"
+            print(f"  attempt {attempt} failed: {failure}")
             continue
         PARSERS_DIR.mkdir(parents=True, exist_ok=True)
-        (PARSERS_DIR / f"{len(saved) + 1:04d}.py").write_text(code)
+        parser = PARSERS_DIR / f"{len(saved) + 1:04d}.py"
+        parser.write_text(code)
+        print(f"  saved new parser {parser.name}")
         return reels
 
     raise RuntimeError(f"no parser after {MAX_ATTEMPTS} attempts: {failure}")

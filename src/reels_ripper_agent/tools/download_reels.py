@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from pathlib import Path
 
 from beartype import beartype
@@ -11,6 +12,11 @@ from reels_ripper_agent.tools.base import Tool
 
 DOWNLOADS_DIR = Path("downloads")
 DOWNLOADS_DELAY_SECONDS = 1
+
+# yt-dlp prints errors to stderr even with "quiet"; the tool prints its own lines
+_SILENT_LOGGER = logging.getLogger("reels_ripper_agent.yt_dlp")
+_SILENT_LOGGER.addHandler(logging.NullHandler())
+_SILENT_LOGGER.propagate = False
 
 
 class DownloadReelsArgs(BaseModel):
@@ -27,6 +33,7 @@ def _download(url: str) -> Path:
         "quiet": True,
         "no_warnings": True,
         "noprogress": True,
+        "logger": _SILENT_LOGGER,
     }
     with YoutubeDL(options) as ydl:
         info = ydl.extract_info(url)
@@ -45,14 +52,19 @@ class DownloadReels(Tool):
     async def execute(self, args: DownloadReelsArgs) -> str:
         downloaded = 0
         failures = []
-        for i, url in enumerate(pending_downloads()):
-            if i:
+        urls = pending_downloads()
+        for i, url in enumerate(urls, 1):
+            if i > 1:
                 await asyncio.sleep(DOWNLOADS_DELAY_SECONDS)
             try:
                 set_download_path(url, _download(url))
-                downloaded += 1
             except DownloadError as e:
-                failures.append(f"{url}: {str(e).split('. ')[0]}")
+                error = str(e).split(". ")[0]
+                failures.append(f"{url}: {error}")
+                print(f"  [{i}/{len(urls)}] failed {url}: {error}")
+                continue
+            downloaded += 1
+            print(f"  [{i}/{len(urls)}] downloaded {url}")
         result = f"Downloaded {downloaded} reels."
         if failures:
             result += f" {len(failures)} failed: " + "; ".join(failures)
