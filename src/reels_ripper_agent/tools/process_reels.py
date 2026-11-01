@@ -4,7 +4,11 @@ from pathlib import Path
 from beartype import beartype
 from pydantic import BaseModel
 
-from reels_ripper_agent.db import delete_reel, pending_processing, set_processed
+from reels_ripper_agent.db.operations import (
+    delete_reel,
+    pending_processing,
+    set_processed,
+)
 from reels_ripper_agent.logic.process_reels import readable, replace_audio
 from reels_ripper_agent.tools.base import Tool
 

@@ -4,7 +4,11 @@ from beartype import beartype
 from pydantic import BaseModel
 from yt_dlp.utils import DownloadError
 
-from reels_ripper_agent.db import delete_reel, pending_downloads, set_download_path
+from reels_ripper_agent.db.operations import (
+    delete_reel,
+    pending_downloads,
+    set_download_path,
+)
 from reels_ripper_agent.logic.download_reels import download
 from reels_ripper_agent.tools.base import Tool
 

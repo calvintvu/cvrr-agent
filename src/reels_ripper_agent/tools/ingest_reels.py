@@ -3,7 +3,7 @@ from pathlib import Path
 from beartype import beartype
 from pydantic import BaseModel, Field
 
-from reels_ripper_agent.db import save_reels
+from reels_ripper_agent.db.operations import save_reels
 from reels_ripper_agent.llm.base import LLM
 from reels_ripper_agent.logic.ingest_reels import extract_reels
 from reels_ripper_agent.tools.base import Tool

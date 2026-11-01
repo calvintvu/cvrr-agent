@@ -4,18 +4,9 @@ from pathlib import Path
 
 from beartype import beartype
 
-DB_PATH = Path("reels.db")
+from reels_ripper_agent.db.schema import SCHEMA
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS reels (
-    id            INTEGER PRIMARY KEY,
-    created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    url           TEXT NOT NULL UNIQUE,
-    author        TEXT NOT NULL,
-    download_path TEXT,
-    is_processed  INTEGER NOT NULL DEFAULT 0
-)
-"""
+DB_PATH = Path("reels.db")
 
 
 def _connect() -> closing[sqlite3.Connection]:
