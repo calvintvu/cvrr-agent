@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS reels (
     created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     url           TEXT NOT NULL UNIQUE,
     author        TEXT NOT NULL,
-    download_path TEXT
+    download_path TEXT,
+    is_processed  INTEGER NOT NULL DEFAULT 0
 )
 """
 
@@ -56,6 +57,25 @@ def set_download_path(url: str, path: Path) -> None:
         conn.execute(
             "UPDATE reels SET download_path = ? WHERE url = ?", (str(path), url)
         )
+
+
+@beartype
+def pending_processing() -> list[tuple[str, str, Path]]:
+    """(url, author, download_path) for reels that are downloaded and not
+    processed, in id order."""
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT url, author, download_path FROM reels"
+            " WHERE download_path IS NOT NULL AND NOT is_processed ORDER BY id"
+        )
+        return [(url, author, Path(path)) for (url, author, path) in rows]
+
+
+@beartype
+def set_processed(url: str) -> None:
+    """Mark the reel at url as processed."""
+    with _connect() as conn, conn:
+        conn.execute("UPDATE reels SET is_processed = 1 WHERE url = ?", (url,))
 
 
 @beartype
