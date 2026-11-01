@@ -1,46 +1,18 @@
 import asyncio
-import logging
-from pathlib import Path
 
 from beartype import beartype
 from pydantic import BaseModel
-from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
 
 from reels_ripper_agent.db import delete_reel, pending_downloads, set_download_path
+from reels_ripper_agent.logic.download_reels import download
 from reels_ripper_agent.tools.base import Tool
 
-DOWNLOADS_DIR = Path(".downloads")
 DOWNLOADS_DELAY_SECONDS = 1
-
-# yt-dlp prints errors to stderr even with "quiet"; the tool prints its own lines
-_SILENT_LOGGER = logging.getLogger("reels_ripper_agent.yt_dlp")
-_SILENT_LOGGER.addHandler(logging.NullHandler())
-_SILENT_LOGGER.propagate = False
 
 
 class DownloadReelsArgs(BaseModel):
     pass  # no args: the tool works through every pending reel
-
-
-def _download(url: str) -> Path:
-    """Download one reel with yt_dlp to DOWNLOADS_DIR/<id>.<ext>.
-
-    Returns the file path. Raises DownloadError on failure.
-    """
-    options = {
-        "outtmpl": str(DOWNLOADS_DIR / "%(id)s.%(ext)s"),
-        # Instagram's single-file formats are H.264, which plays everywhere. The
-        # separate video streams are VP9, which QuickTime plays as audio only.
-        "format": "b/bv*+ba",
-        "quiet": True,
-        "no_warnings": True,
-        "noprogress": True,
-        "logger": _SILENT_LOGGER,
-    }
-    with YoutubeDL(options) as ydl:
-        info = ydl.extract_info(url)
-    return Path(info["requested_downloads"][0]["filepath"])
 
 
 class DownloadReels(Tool):
@@ -61,7 +33,7 @@ class DownloadReels(Tool):
             if i > 1:
                 await asyncio.sleep(DOWNLOADS_DELAY_SECONDS)
             try:
-                set_download_path(url, _download(url))
+                set_download_path(url, download(url))
             except DownloadError as e:
                 error = str(e).split(". ")[0]
                 delete_reel(url)
