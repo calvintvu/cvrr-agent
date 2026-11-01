@@ -8,7 +8,7 @@ from reels_ripper_agent.db import delete_reel, pending_processing, set_processed
 from reels_ripper_agent.tools.base import Tool
 
 ASSETS_DIR = Path("assets")
-PROCESSED_DIR = Path("processed")
+PROCESSED_DIR = Path(".processed")
 
 
 class ProcessReelsArgs(BaseModel):

@@ -10,7 +10,7 @@ from yt_dlp.utils import DownloadError
 from reels_ripper_agent.db import delete_reel, pending_downloads, set_download_path
 from reels_ripper_agent.tools.base import Tool
 
-DOWNLOADS_DIR = Path("downloads")
+DOWNLOADS_DIR = Path(".downloads")
 DOWNLOADS_DELAY_SECONDS = 1
 
 # yt-dlp prints errors to stderr even with "quiet"; the tool prints its own lines
