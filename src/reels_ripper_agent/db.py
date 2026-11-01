@@ -56,3 +56,10 @@ def set_download_path(url: str, path: Path) -> None:
         conn.execute(
             "UPDATE reels SET download_path = ? WHERE url = ?", (str(path), url)
         )
+
+
+@beartype
+def delete_reel(url: str) -> None:
+    """Remove the reel at url from the table."""
+    with _connect() as conn, conn:
+        conn.execute("DELETE FROM reels WHERE url = ?", (url,))

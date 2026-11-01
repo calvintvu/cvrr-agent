@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
 
-from reels_ripper_agent.db import pending_downloads, set_download_path
+from reels_ripper_agent.db import delete_reel, pending_downloads, set_download_path
 from reels_ripper_agent.tools.base import Tool
 
 DOWNLOADS_DIR = Path("downloads")
@@ -47,6 +47,7 @@ class DownloadReels(Tool):
     name = "download_reels"
     description = (
         "Download every saved reel that is not downloaded yet. "
+        "Failed reels are deleted from the database. "
         "Returns how many downloaded and which urls failed."
     )
     args_model = DownloadReelsArgs
@@ -63,12 +64,15 @@ class DownloadReels(Tool):
                 set_download_path(url, _download(url))
             except DownloadError as e:
                 error = str(e).split(". ")[0]
+                delete_reel(url)
                 failures.append(f"{url}: {error}")
-                print(f"  [{i}/{len(urls)}] failed {url}: {error}")
+                print(f"  [{i}/{len(urls)}] failed and deleted {url}: {error}")
                 continue
             downloaded += 1
             print(f"  [{i}/{len(urls)}] downloaded {url}")
         result = f"Downloaded {downloaded} reels."
         if failures:
-            result += f" {len(failures)} failed: " + "; ".join(failures)
+            result += f" {len(failures)} failed and were deleted: " + "; ".join(
+                failures
+            )
         return result
