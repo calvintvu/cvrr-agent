@@ -30,6 +30,9 @@ def _download(url: str) -> Path:
     """
     options = {
         "outtmpl": str(DOWNLOADS_DIR / "%(id)s.%(ext)s"),
+        # Instagram's single-file formats are H.264, which plays everywhere. The
+        # separate video streams are VP9, which QuickTime plays as audio only.
+        "format": "b/bv*+ba",
         "quiet": True,
         "no_warnings": True,
         "noprogress": True,
