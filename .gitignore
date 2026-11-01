@@ -8,3 +8,4 @@ dist/
 .parsers
 reels.db
 downloads/
+processed/
