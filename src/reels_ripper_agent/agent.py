@@ -1,4 +1,5 @@
 import sys
+import time
 
 from beartype import beartype
 from pydantic import ValidationError
@@ -33,6 +34,7 @@ class Agent:
 
     @beartype
     async def run(self, prompt: str) -> str:
+        started_at = time.perf_counter()
         self.messages.append(Message(role="user", content=prompt))
         tools = [t.schema() for t in self.tools.values()]
 
@@ -43,6 +45,9 @@ class Agent:
             if reply.reasoning:
                 _show_commentary(reply.reasoning)
             if not reply.tool_calls:
+                _show_commentary(
+                    f"Agent loop completed in {time.perf_counter() - started_at:.2f}s"
+                )
                 return reply.content or ""
             if reply.content:
                 _show_commentary(reply.content)
