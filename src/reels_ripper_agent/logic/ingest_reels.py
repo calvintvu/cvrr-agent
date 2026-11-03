@@ -7,6 +7,7 @@ from beartype import beartype
 from pydantic import StringConstraints, TypeAdapter, ValidationError
 from pydantic_monty import Monty, MontyError, ResourceLimits
 
+from reels_ripper_agent.config import DATA_DIR
 from reels_ripper_agent.llm.base import LLM, Message
 
 REEL_URL_RE = r"https://www\.instagram\.com/(?:reel|p)/[\w-]+/?"
@@ -14,7 +15,7 @@ ReelUrl = Annotated[str, StringConstraints(pattern=rf"^{REEL_URL_RE}$")]
 Handle = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9._]{1,30}$")]
 Reels = TypeAdapter(list[tuple[ReelUrl, Handle]])
 
-PARSERS_DIR = Path(".parsers")
+PARSERS_DIR = DATA_DIR / ".parsers"
 MAX_ATTEMPTS = 3
 
 PROMPT = """Write a Python snippet that extracts Instagram posts from JSON data.

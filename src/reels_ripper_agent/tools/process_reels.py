@@ -4,6 +4,7 @@ from pathlib import Path
 from beartype import beartype
 from pydantic import BaseModel
 
+from reels_ripper_agent.config import DATA_DIR
 from reels_ripper_agent.db.operations import (
     delete_reel,
     pending_processing,
@@ -13,7 +14,7 @@ from reels_ripper_agent.logic.process_reels import readable, replace_audio
 from reels_ripper_agent.tools.base import Tool
 
 ASSETS_DIR = Path("assets")
-PROCESSED_DIR = Path(".processed")
+PROCESSED_DIR = DATA_DIR / ".processed"
 
 
 class ProcessReelsArgs(BaseModel):

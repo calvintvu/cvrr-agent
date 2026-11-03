@@ -4,13 +4,15 @@ from pathlib import Path
 
 from beartype import beartype
 
+from reels_ripper_agent.config import DATA_DIR
 from reels_ripper_agent.db.schema import SCHEMA
 
-DB_PATH = Path("reels.db")
+DB_PATH = DATA_DIR / "reels.db"
 
 
 def _connect() -> closing[sqlite3.Connection]:
     """Open the database and create the reels table if it does not exist."""
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.execute(SCHEMA)
     return closing(conn)

@@ -4,7 +4,9 @@ from pathlib import Path
 from beartype import beartype
 from yt_dlp import YoutubeDL
 
-DOWNLOADS_DIR = Path(".downloads")
+from reels_ripper_agent.config import DATA_DIR
+
+DOWNLOADS_DIR = DATA_DIR / ".downloads"
 
 # yt-dlp prints errors to stderr even with "quiet"; the tool prints its own lines
 _SILENT_LOGGER = logging.getLogger("reels_ripper_agent.yt_dlp")

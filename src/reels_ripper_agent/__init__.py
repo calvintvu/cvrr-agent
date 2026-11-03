@@ -3,7 +3,6 @@ import os
 import sys
 
 from beartype import beartype
-from dotenv import load_dotenv
 
 from reels_ripper_agent.agent import Agent
 from reels_ripper_agent.llm.openrouter import OpenRouterLLM
@@ -27,6 +26,5 @@ async def _main(prompt: str) -> None:
 
 @beartype
 def main() -> None:
-    load_dotenv()
     prompt = " ".join(sys.argv[1:]) or "What's the weather in Tokyo?"
     asyncio.run(_main(prompt))
