@@ -25,7 +25,7 @@ def replace_audio(video: Path, audio: Path, out: Path) -> None:
     subprocess.run(
         ["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", str(video), "-i", str(audio)]
         + ["-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac"]
-        + ["-shortest", str(out)],
+        + ["-shortest", "-movflags", "+faststart", str(out)],
         check=True,
         capture_output=True,
         text=True,
