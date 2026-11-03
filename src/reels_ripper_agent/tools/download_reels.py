@@ -1,4 +1,5 @@
 import asyncio
+import random
 
 from beartype import beartype
 from pydantic import BaseModel
@@ -12,7 +13,8 @@ from reels_ripper_agent.db.operations import (
 from reels_ripper_agent.logic.download_reels import download
 from reels_ripper_agent.tools.base import Tool
 
-DOWNLOADS_DELAY_SECONDS = 1
+# random gap between downloads so Instagram does not rate-limit a residential IP
+DOWNLOADS_DELAY_SECONDS = (10, 30)
 
 
 class DownloadReelsArgs(BaseModel):
@@ -35,7 +37,7 @@ class DownloadReels(Tool):
         urls = pending_downloads()
         for i, url in enumerate(urls, 1):
             if i > 1:
-                await asyncio.sleep(DOWNLOADS_DELAY_SECONDS)
+                await asyncio.sleep(random.uniform(*DOWNLOADS_DELAY_SECONDS))
             try:
                 set_download_path(url, download(url))
             except DownloadError as e:
