@@ -11,10 +11,11 @@ DB_PATH = DATA_DIR / "reels.db"
 
 
 def _connect() -> closing[sqlite3.Connection]:
-    """Open the database and create the reels table if it does not exist."""
+    """Open the database and create the tables if they do not exist."""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
-    conn.execute(SCHEMA)
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.executescript(SCHEMA)
     return closing(conn)
 
 
@@ -53,26 +54,56 @@ def set_download_path(url: str, path: Path) -> None:
 
 
 @beartype
-def pending_processing() -> list[tuple[str, str, Path]]:
-    """(url, author, download_path) for reels that are downloaded and not
-    processed, in id order."""
+def pending_renders(cuts: list[str]) -> list[tuple[int, str, str, Path, list[str]]]:
+    """(reel_id, url, author, download_path, missing_cuts) for each downloaded
+    reel that has no render for one or more of cuts, in id order. missing_cuts
+    keeps the order of cuts."""
     with _connect() as conn:
+        done = set(conn.execute("SELECT reel_id, cut FROM renders"))
         rows = conn.execute(
-            "SELECT url, author, download_path FROM reels"
-            " WHERE download_path IS NOT NULL AND NOT is_processed ORDER BY id"
-        )
-        return [(url, author, Path(path)) for (url, author, path) in rows]
+            "SELECT id, url, author, download_path FROM reels"
+            " WHERE download_path IS NOT NULL ORDER BY id"
+        ).fetchall()
+    pending = []
+    for reel_id, url, author, path in rows:
+        missing = [cut for cut in cuts if (reel_id, cut) not in done]
+        if missing:
+            pending.append((reel_id, url, author, Path(path), missing))
+    return pending
 
 
 @beartype
-def set_processed(url: str) -> None:
-    """Mark the reel at url as processed."""
+def add_render(reel_id: int, cut: str, path: Path) -> None:
+    """Record that the reel with reel_id was rendered with cut to path."""
     with _connect() as conn, conn:
-        conn.execute("UPDATE reels SET is_processed = 1 WHERE url = ?", (url,))
+        conn.execute(
+            "INSERT INTO renders (reel_id, cut, path) VALUES (?, ?, ?)",
+            (reel_id, cut, str(path)),
+        )
+
+
+@beartype
+def next_unposted() -> tuple[int, Path] | None:
+    """(render_id, path) of the oldest render that is not posted, or None."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT id, path FROM renders WHERE posted_at IS NULL ORDER BY id LIMIT 1"
+        ).fetchone()
+    return None if row is None else (row[0], Path(row[1]))
+
+
+@beartype
+def set_posted(render_id: int) -> None:
+    """Mark the render with render_id as posted now."""
+    with _connect() as conn, conn:
+        conn.execute(
+            "UPDATE renders SET posted_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (render_id,),
+        )
 
 
 @beartype
 def delete_reel(url: str) -> None:
-    """Remove the reel at url from the table."""
+    """Remove the reel at url and its renders."""
     with _connect() as conn, conn:
         conn.execute("DELETE FROM reels WHERE url = ?", (url,))
