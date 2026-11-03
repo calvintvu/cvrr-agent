@@ -112,11 +112,16 @@ def delete_reel(url: str) -> None:
 
 
 @beartype
-def create_run() -> int:
-    """Insert a new run with status 'running'. Returns its id."""
+def create_run(messages: list[Message]) -> int:
+    """Insert a new run with status 'running' and its first messages, in one
+    transaction. Returns its id."""
     with _connect() as conn, conn:
         run_id = conn.execute("INSERT INTO runs DEFAULT VALUES").lastrowid
         assert run_id is not None
+        conn.executemany(
+            "INSERT INTO messages (run_id, seq, body) VALUES (?, ?, ?)",
+            [(run_id, seq, m.model_dump_json()) for seq, m in enumerate(messages)],
+        )
         return run_id
 
 

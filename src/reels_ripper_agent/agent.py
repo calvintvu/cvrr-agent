@@ -38,18 +38,26 @@ class Agent:
     @beartype
     async def run(self, prompt: str) -> str:
         """Start a new run. Each message is saved before the loop uses it."""
-        self.run_id = db.create_run()
-        self.messages = []
-        self._append(Message(role="system", content=self.system_prompt))
-        self._append(Message(role="user", content=prompt))
+        self.messages = [
+            Message(role="system", content=self.system_prompt),
+            Message(role="user", content=prompt),
+        ]
+        self.run_id = db.create_run(self.messages)
         return await self._loop()
 
     @beartype
     async def resume(self, run_id: int) -> str:
-        """Continue a run from its saved messages. First run the tool calls of
-        the last assistant message that have no saved result."""
+        """Continue a run from its saved messages. If the last message is a
+        final answer, the crash came before the run was marked done: mark it
+        now. Otherwise first run the tool calls of the last assistant message
+        that have no saved result."""
         self.run_id = run_id
         self.messages = db.load_messages(run_id)
+        final = self.messages[-1]
+        if final.role == "assistant" and not final.tool_calls:
+            result = final.content or ""
+            db.finish_run(run_id, "done", result)
+            return result
         last = next(
             (
                 i
