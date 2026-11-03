@@ -98,9 +98,11 @@ async def _generate_parser(llm: LLM, sample: str, error: str | None) -> str:
 
 @beartype
 async def extract_reels(llm: LLM, path: Path) -> list[tuple[str, str]]:
-    raw_text = path.read_text()
-    data = json.loads(raw_text)
-    expected_urls = set(re.findall(REEL_URL_RE, raw_text))
+    data = json.loads(path.read_text())
+    # Scan the decoded data, not the raw text: exports can escape "/" as "\/".
+    expected_urls = set(re.findall(REEL_URL_RE, json.dumps(data)))
+    if not expected_urls:
+        raise ValueError(f"no post urls found in {path}")
 
     saved = sorted(PARSERS_DIR.glob("*.py"))
     for parser in saved:
