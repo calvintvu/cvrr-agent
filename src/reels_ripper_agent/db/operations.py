@@ -1,11 +1,13 @@
 import sqlite3
 from contextlib import closing
 from pathlib import Path
+from typing import Literal
 
 from beartype import beartype
 
 from reels_ripper_agent.config import DATA_DIR
 from reels_ripper_agent.db.schema import SCHEMA
+from reels_ripper_agent.llm.base import Message
 
 DB_PATH = DATA_DIR / "reels.db"
 
@@ -107,3 +109,54 @@ def delete_reel(url: str) -> None:
     """Remove the reel at url and its renders."""
     with _connect() as conn, conn:
         conn.execute("DELETE FROM reels WHERE url = ?", (url,))
+
+
+@beartype
+def create_run() -> int:
+    """Insert a new run with status 'running'. Returns its id."""
+    with _connect() as conn, conn:
+        run_id = conn.execute("INSERT INTO runs DEFAULT VALUES").lastrowid
+        assert run_id is not None
+        return run_id
+
+
+@beartype
+def append_message(run_id: int, seq: int, message: Message) -> None:
+    """Store message as entry seq of the run."""
+    with _connect() as conn, conn:
+        conn.execute(
+            "INSERT INTO messages (run_id, seq, body) VALUES (?, ?, ?)",
+            (run_id, seq, message.model_dump_json()),
+        )
+
+
+@beartype
+def load_messages(run_id: int) -> list[Message]:
+    """The stored messages of the run, in seq order."""
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT body FROM messages WHERE run_id = ? ORDER BY seq", (run_id,)
+        )
+        return [Message.model_validate_json(body) for (body,) in rows]
+
+
+@beartype
+def finish_run(
+    run_id: int, status: Literal["done", "failed"], result: str | None
+) -> None:
+    """Set the final status and result of the run."""
+    with _connect() as conn, conn:
+        conn.execute(
+            "UPDATE runs SET status = ?, result = ? WHERE id = ?",
+            (status, result, run_id),
+        )
+
+
+@beartype
+def unfinished_run() -> int | None:
+    """Id of the newest run with status 'running', or None."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT id FROM runs WHERE status = 'running' ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    return None if row is None else row[0]

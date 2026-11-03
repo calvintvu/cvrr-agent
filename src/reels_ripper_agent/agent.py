@@ -4,6 +4,7 @@ import time
 from beartype import beartype
 from pydantic import ValidationError
 
+from reels_ripper_agent.db import operations as db
 from reels_ripper_agent.llm.base import LLM, Message, ToolCall
 from reels_ripper_agent.tools.base import Tool
 
@@ -30,34 +31,78 @@ class Agent:
         self.llm = llm
         self.tools = {t.name: t for t in tools}
         self.max_turns = max_turns
-        self.messages: list[Message] = [Message(role="system", content=system_prompt)]
+        self.system_prompt = system_prompt
+        self.messages: list[Message] = []
+        self.run_id: int | None = None
 
     @beartype
     async def run(self, prompt: str) -> str:
-        started_at = time.perf_counter()
-        self.messages.append(Message(role="user", content=prompt))
-        tools = [t.schema() for t in self.tools.values()]
+        """Start a new run. Each message is saved before the loop uses it."""
+        self.run_id = db.create_run()
+        self.messages = []
+        self._append(Message(role="system", content=self.system_prompt))
+        self._append(Message(role="user", content=prompt))
+        return await self._loop()
 
-        for _ in range(self.max_turns):
+    @beartype
+    async def resume(self, run_id: int) -> str:
+        """Continue a run from its saved messages. First run the tool calls of
+        the last assistant message that have no saved result."""
+        self.run_id = run_id
+        self.messages = db.load_messages(run_id)
+        last = next(
+            (
+                i
+                for i in reversed(range(len(self.messages)))
+                if self.messages[i].role == "assistant"
+            ),
+            None,
+        )
+        if last is not None:
+            answered = {m.tool_call_id for m in self.messages[last + 1 :]}
+            for call in self.messages[last].tool_calls or []:
+                if call.id not in answered:
+                    await self._run_tool_call(call)
+        return await self._loop()
+
+    @beartype
+    def _append(self, message: Message) -> None:
+        assert self.run_id is not None
+        db.append_message(self.run_id, len(self.messages), message)
+        self.messages.append(message)
+
+    @beartype
+    async def _run_tool_call(self, call: ToolCall) -> None:
+        result = await self._execute(call)
+        self._append(Message(role="tool", tool_call_id=call.id, content=result))
+
+    @beartype
+    async def _loop(self) -> str:
+        assert self.run_id is not None
+        started_at = time.perf_counter()
+        tools = [t.schema() for t in self.tools.values()]
+        turns_used = sum(m.role == "assistant" for m in self.messages)
+
+        for _ in range(self.max_turns - turns_used):
             print("working...")
             reply = await self.llm.complete(messages=self.messages, tools=tools)
-            self.messages.append(reply)
+            self._append(reply)
             if reply.reasoning:
                 _show_commentary(reply.reasoning)
             if not reply.tool_calls:
                 _show_commentary(
                     f"Agent loop completed in {time.perf_counter() - started_at:.2f}s"
                 )
-                return reply.content or ""
+                result = reply.content or ""
+                db.finish_run(self.run_id, "done", result)
+                return result
             if reply.content:
                 _show_commentary(reply.content)
 
             for call in reply.tool_calls:
-                result = await self._execute(call)
-                self.messages.append(
-                    Message(role="tool", tool_call_id=call.id, content=result)
-                )
+                await self._run_tool_call(call)
 
+        db.finish_run(self.run_id, "failed", None)
         raise RuntimeError(f"Agent reached the limit of {self.max_turns} turns")
 
     @beartype
